@@ -317,8 +317,9 @@
                                             {{ $statusInfo['label'] }}
                                         </span>
                                         <div class="flex space-x-2" @if($hasActiveInternship) title="{{ $tooltip }}" @endif>
-                                            <form action="{{ route('admin.applications.process', $application) }}" method="POST" class="inline-block" @if($hasActiveInternship) onclick="event.preventDefault(); return false;" @endif>
+                                            <form action="{{ route('admin.applications.process', $application) }}" method="POST" class="inline-block" @if($hasActiveInternship) onsubmit="event.preventDefault(); return false;" @endif>
                                                 @csrf
+                                                @method('POST')
                                                 <button type="submit" 
                                                         class="inline-flex items-center px-2.5 py-1 border border-transparent text-xs font-medium rounded-lg shadow-sm text-yellow-800 bg-yellow-100 hover:bg-yellow-200 dark:bg-yellow-900 dark:text-yellow-200 dark:hover:bg-yellow-800 transition-colors {{ $isDisabled }}"
                                                         @if($hasActiveInternship) disabled @endif>
@@ -351,27 +352,62 @@
                                     </span>
                                 @endif
                             </td>
-                            <!-- Kolom Aksi - Hanya tombol Mulai Magang -->
-                            <td class="px-6 py-5 whitespace-nowrap">
-                                @if($application->status === 'diterima' && $application->status_magang !== 'in_progress' && $application->status_magang !== 'completed')
-                                <form id="start-internship-form-{{ $application->id }}" action="{{ route('admin.applications.start-internship', $application) }}" method="POST" class="inline-block">
-                                    @csrf
-                                    <button type="button" 
-                                            class="start-internship-btn inline-flex items-center px-3 py-1.5 border border-green-200 dark:border-green-800 text-sm font-medium rounded-lg bg-green-50 dark:bg-green-900/30 text-green-700 dark:text-green-300 hover:bg-green-100 dark:hover:bg-green-800/50 transition-colors shadow-sm w-full justify-center"
-                                            data-application-id="{{ $application->id }}"
-                                            data-student-name="{{ $application->user->name }}">
-                                        Mulai Magang
-                                    </button>
-                                </form>
-                                @else
-                                <span class="text-sm text-gray-500 dark:text-gray-400">-</span>
+                            <!-- Kolom Aksi - Tombol Mulai Magang dan Status -->
+                            <td class="px-6 py-5 whitespace-nowrap text-sm font-medium">
+                                @if($application->status === 'terkirim')
+                                    <span class="text-xs text-gray-500 dark:text-gray-400">
+                                        Klik "Mulai Tinjau" untuk memproses
+                                    </span>
+                                @elseif($application->status === 'diproses')
+                                    <span class="text-xs text-yellow-600 dark:text-yellow-400">
+                                        Silakan tinjau lamaran
+                                    </span>
+                                @elseif($application->status === 'diterima' && $application->status_magang !== 'in_progress' && $application->status_magang !== 'completed')
+                                    <form id="start-internship-form-{{ $application->id }}" action="{{ route('admin.applications.start-internship', $application) }}" method="POST" class="inline-block">
+                                        @csrf
+                                        <button type="button" 
+                                                onclick="confirmStartInternship('{{ $application->id }}', '{{ $application->user->name }}')" 
+                                                class="start-internship-btn inline-flex items-center px-3 py-1.5 border border-transparent text-xs font-medium rounded-md shadow-sm text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500">
+                                            <svg class="-ml-0.5 mr-1.5 h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" />
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                            </svg>
+                                            Mulai Magang
+                                        </button>
+                                    </form>
+                                @elseif($application->status_magang === 'in_progress')
+                                    <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800 dark:bg-yellow-800/30 dark:text-yellow-400">
+                                        <svg class="-ml-0.5 mr-1.5 h-3 w-3 text-yellow-500 dark:text-yellow-400" fill="currentColor" viewBox="0 0 8 8">
+                                            <circle cx="4" cy="4" r="3" />
+                                        </svg>
+                                        Sedang Berjalan
+                                    </span>
+                                @elseif($application->status_magang === 'completed')
+                                    <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800 dark:bg-green-800/30 dark:text-green-400">
+                                        <svg class="-ml-0.5 mr-1.5 h-3 w-3 text-green-500 dark:text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+                                        </svg>
+                                        Selesai
+                                    </span>
+                                @elseif($application->status === 'ditolak')
+                                    <span class="text-xs text-red-500 dark:text-red-400">
+                                        Lamaran ditolak
+                                    </span>
                                 @endif
+                                
+                                <!-- Tombol Detail -->
+                                <a href="{{ route('admin.applications.show', $application) }}" 
+                                   class="mt-2 inline-flex items-center px-2.5 py-1.5 border border-gray-300 dark:border-gray-600 text-xs font-medium rounded text-gray-700 dark:text-gray-200 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
+                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                                    </svg>
+                                    Detail
+                                </a>
                             </td>
-                            
-                            <!-- Kolom Lihat Data Pelamar -->
                             <td class="px-6 py-5 whitespace-nowrap">
                                 <a href="{{ route('admin.applications.show', $application) }}" 
-                                   class="inline-flex items-center justify-center px-3 py-1.5 border border-gray-200 dark:border-gray-600 text-sm font-medium rounded-lg bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors shadow-sm w-full">
+                                   class="inline-flex items-center justify-center px-3 py-1.5 border border-gray-300 text-sm font-medium rounded-lg bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors shadow-sm w-full">
                                     <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />

@@ -317,21 +317,21 @@ class User extends Authenticatable
         ];
 
         try {
-            // Buat notifikasi
-            $notification = new \App\Models\Notification([
-                'user_id' => $this->id,
-                'title' => $template['title'],
-                'message' => $template['message'],
-                'is_read' => false,
-                'type' => $template['notification_type'],
-                'action_url' => $actionUrl,
-                'data' => $notificationData,
-                'read_at' => null,
-                'notifiable_type' => get_class($application),
-                'notifiable_id' => $application->id
-            ]);
+            // Buat notifikasi menggunakan method notify bawaan Laravel
+            $notification = $this->notify(
+                new \App\Notifications\ApplicationStatusUpdated(
+                    $application,
+                    $type,
+                    $template['title'],
+                    $template['message'],
+                    $actionUrl
+                )
+            );
             
-            $notification->save();
+            // Dapatkan notifikasi yang baru saja dibuat
+            $notification = $this->notifications()
+                ->latest()
+                ->first();
 
             // Dispatch event untuk update realtime
             if (class_exists('App\\Events\\NotificationCreated')) {

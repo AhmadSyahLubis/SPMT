@@ -145,6 +145,30 @@ class ApplicationController extends Controller
                 'started_at' => now()
             ]);
             
+            // Kirim event untuk update real-time
+            event(new \App\Events\InternshipStatusUpdated($application));
+            
+            // Kirim notifikasi ke user
+            try {
+                $application->user->notify(new \App\Notifications\ApplicationStatusUpdated(
+                    $application,
+                    'in_progress',
+                    'Magang Anda Telah Dimulai',
+                    'Selamat! Magang Anda di ' . ($application->internship->company ?? 'Perusahaan') . ' telah dimulai.'
+                ));
+                
+                \Log::info('Notifikasi berhasil dikirim ke user', [
+                    'user_id' => $application->user->id,
+                    'application_id' => $application->id
+                ]);
+            } catch (\Exception $e) {
+                \Log::error('Gagal mengirim notifikasi: ' . $e->getMessage(), [
+                    'trace' => $e->getTraceAsString(),
+                    'user_id' => $application->user->id,
+                    'application_id' => $application->id
+                ]);
+            }
+            
             // Log activity
             ActivityLog::create([
                 'log_name' => 'internship',
@@ -153,6 +177,10 @@ class ApplicationController extends Controller
                 'subject_id' => $application->id,
                 'causer_type' => get_class(Auth::user()),
                 'causer_id' => Auth::id(),
+                'properties' => [
+                    'status_magang' => 'in_progress',
+                    'started_at' => now()->toDateTimeString()
+                ]
             ]);
             
             return redirect()->back()
@@ -239,10 +267,19 @@ class ApplicationController extends Controller
     public function process(Request $request, Application $application)
     {
         try {
+            // Validasi method request
+            if (!$request->isMethod('post')) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Method not allowed. Use POST method.'
+                ], 405);
+            }
+
             \Log::info('Process method called', [
                 'application_id' => $application->id,
                 'current_status' => $application->status,
-                'user_id' => auth()->id()
+                'user_id' => auth()->id(),
+                'request_method' => $request->method()
             ]);
 
             // Validasi status saat ini
@@ -502,13 +539,14 @@ class ApplicationController extends Controller
         try {
             // Validasi status saat ini
             if ($application->status !== 'diproses') {
+                $message = 'Hanya lamaran dengan status Diproses yang bisa ditolak. Status saat ini: ' . $application->status;
                 if ($request->wantsJson()) {
                     return response()->json([
                         'success' => false,
-                        'message' => 'Hanya lamaran dengan status Diproses yang bisa ditolak'
+                        'message' => $message
                     ], 422);
                 }
-                return back()->with('error', 'Hanya lamaran dengan status Diproses yang bisa ditolak');
+                return back()->with('error', $message);
             }
 
             DB::beginTransaction();

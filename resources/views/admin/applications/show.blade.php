@@ -8,7 +8,7 @@
             <p class="text-gray-600 dark:text-gray-400">Informasi lengkap lamaran magang</p>
         </div>
         <div class="space-x-2">
-            @if($application->status === 'pending')
+            @if(in_array($application->status, ['pending', 'terkirim', 'diproses']))
             <form action="{{ route('admin.applications.approve', $application) }}" method="POST" class="inline-block">
                 @csrf
                 <button type="submit" class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500">
@@ -36,6 +36,16 @@
                             'class' => 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-300',
                             'label' => 'Menunggu',
                             'icon' => '⏳'
+                        ],
+                        'terkirim' => [
+                            'class' => 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300',
+                            'label' => 'Terkirim',
+                            'icon' => '📤'
+                        ],
+                        'diproses' => [
+                            'class' => 'bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-300',
+                            'label' => 'Diproses',
+                            'icon' => '🔄'
                         ],
                         'submitted' => [
                             'class' => 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300',
@@ -645,38 +655,83 @@
 </div>
 
 @push('scripts')
+<script src="https://js.pusher.com/7.0/pusher.min.js"></script>
 <script>
-    // Tab switching functionality
-    function switchTab(tabId) {
-        // Hide all tab contents
-        document.querySelectorAll('.tab-content').forEach(tab => {
-            tab.classList.add('hidden');
-        });
-        
-        // Remove active class from all tab buttons
-        document.querySelectorAll('button[onclick^="switchTab"]').forEach(button => {
-            button.classList.remove('border-blue-500', 'text-gray-900', 'dark:text-white');
-            button.classList.add('border-transparent', 'text-gray-500', 'dark:text-gray-400', 'hover:text-gray-700', 'hover:border-gray-300', 'dark:hover:text-gray-300');
-        });
-        
-        // Show the selected tab content
-        const selectedTab = document.getElementById(`${tabId}-content`);
-        if (selectedTab) {
-            selectedTab.classList.remove('hidden');
-        }
-        
-        // Add active class to the clicked tab button
-        const activeButton = document.getElementById(`tab-${tabId}`);
-        if (activeButton) {
-            activeButton.classList.remove('border-transparent', 'text-gray-500', 'dark:text-gray-400', 'hover:text-gray-700', 'hover:border-gray-300', 'dark:hover:text-gray-300');
-            activeButton.classList.add('border-blue-500', 'text-gray-900', 'dark:text-white');
-        }
-    }
-    
-    // Show profile tab by default
+    // Inisialisasi tab
     document.addEventListener('DOMContentLoaded', function() {
+        // Show profile tab by default
         switchTab('profile');
+
+        // Inisialisasi Pusher
+        const pusher = new Pusher('{{ config('broadcasting.connections.pusher.key') }}', {
+            cluster: '{{ config('broadcasting.connections.pusher.options.cluster') }}',
+            encrypted: true
+        });
+
+        // Subscribe ke channel aplikasi
+        const channel = pusher.subscribe('application.{{ $application->id }}');
+
+        // Listen untuk event update status magang
+        channel.bind('internship.status.updated', function(data) {
+            // Update status magang di halaman
+            const statusElement = document.querySelector('.internship-status-badge');
+            if (statusElement) {
+                // Update teks status
+                const statusText = statusElement.querySelector('.status-text');
+                if (statusText) statusText.textContent = data.status_label;
+                
+                // Update class status
+                statusElement.className = 'internship-status-badge px-2.5 py-0.5 rounded-full text-xs font-medium ';
+                if (data.status === 'in_progress') {
+                    statusElement.className += 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-300';
+                } else if (data.status === 'completed') {
+                    statusElement.className += 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300';
+                } else {
+                    statusElement.className += 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300';
+                }
+            }
+
+            // Update tanggal mulai jika ada
+            if (data.started_at) {
+                const startedAtElement = document.querySelector('.internship-started-at');
+                if (startedAtElement) {
+                    startedAtElement.textContent = data.started_at;
+                }
+            }
+
+            // Tampilkan notifikasi
+            showNotification('success', 'Status magang berhasil diperbarui', 'Status Magang Diperbarui');
+        });
     });
+
+    // Fungsi untuk menampilkan notifikasi
+    function showNotification(type, message, title = '') {
+        const notification = document.createElement('div');
+        notification.className = `fixed right-4 top-4 p-4 rounded-lg shadow-lg bg-white dark:bg-gray-800 border-l-4 ${
+            type === 'success' ? 'border-green-500' : 'border-red-500'
+        } z-50 max-w-sm`;
+        
+        notification.innerHTML = `
+            <div class="flex">
+                <div class="flex-shrink-0">
+                    <svg class="h-5 w-5 ${type === 'success' ? 'text-green-500' : 'text-red-500'}" fill="currentColor" viewBox="0 0 20 20">
+                        <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd" />
+                    </svg>
+                </div>
+                <div class="ml-3">
+                    <p class="text-sm font-medium text-gray-900 dark:text-white">${title}</p>
+                    <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">${message}</p>
+                </div>
+            </div>
+        `;
+        
+        document.body.appendChild(notification);
+        
+        // Hapus notifikasi setelah 5 detik
+        setTimeout(() => {
+            notification.remove();
+        }, 5000);
+    }
 
     // Reject modal functions
     function openRejectModal() {

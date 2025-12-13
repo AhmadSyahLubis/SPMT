@@ -1,0 +1,7 @@
+User SPMT
+
+email: muhammadfahri@gmail.com
+password : Password1!
+
+email: muhammadalif@gmail.com
+password : Password2!
