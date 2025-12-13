@@ -12,8 +12,27 @@
   ],
   "routes": [
     { "handle": "filesystem" },
-    { "src": "/(.*)", "dest": "/index.php" }
+    { 
+      "src": "^/build/(.*)",
+      "dest": "/build/$1"
+    },
+    { 
+      "src": "^/storage/(.*)",
+      "dest": "/storage/$1"
+    },
+    {
+      "src": "^/(.*\\.(css|js|jpg|jpeg|png|gif|ico|svg|woff|woff2|ttf|eot))",
+      "dest": "/$1"
+    },
+    { 
+      "src": "^/(.*)",
+      "dest": "/index.php"
+    }
   ],
-  "buildCommand": "npm install && npm run build",
-  "outputDirectory": "public"
+  "build": {
+    "env": {
+      "APP_ENV": "production",
+      "APP_DEBUG": "false"
+    }
+  }
 }
