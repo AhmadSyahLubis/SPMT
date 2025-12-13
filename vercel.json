@@ -1,31 +1,58 @@
 {
   "version": 2,
-  "builds": {
-    "src/vercel-php/**/*.php": "@vercel/php"
-  },
-  "routes": [
-    { "handle": "filesystem" },
-    { 
-      "src": "^/build/(.*)",
-      "dest": "/public/build/$1"
+  "builds": [
+    {
+      "src": "public/index.php",
+      "use": "@vercel/php"
     },
-    { 
+    {
+      "src": "public/**",
+      "use": "@vercel/static"
+    }
+  ],
+  "routes": [
+    {
+      "src": "^/build/(.*)",
+      "dest": "/build/$1"
+    },
+    {
       "src": "^/storage/(.*)",
-      "dest": "/public/storage/$1"
+      "dest": "/storage/$1"
+    },
+    {
+      "src": "^/favicon\\.ico",
+      "dest": "/favicon.ico"
+    },
+    {
+      "src": "^/robots\\.txt",
+      "dest": "/robots.txt"
+    },
+    {
+      "src": "^/sitemap\\.xml",
+      "dest": "/sitemap.xml"
     },
     {
       "src": "^/(.*\\.(css|js|jpg|jpeg|png|gif|ico|svg|woff|woff2|ttf|eot))",
-      "dest": "/public/$1"
+      "dest": "/$1"
     },
-    { 
+    {
       "src": "^/(.*)",
-      "dest": "/public/index.php"
+      "dest": "/index.php"
     }
   ],
   "env": {
     "APP_ENV": "production",
-    "APP_DEBUG": "false"
+    "APP_DEBUG": "false",
+    "APP_URL": "https://your-vercel-url.vercel.app"
   },
-  "buildCommand": "npm install && npm run build",
-  "outputDirectory": "public"
+  "build": {
+    "env": {
+      "NODE_ENV": "production"
+    }
+  },
+  "deploy": {
+    "env": {
+      "APP_ENV": "production"
+    }
+  }
 }
